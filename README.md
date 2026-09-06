@@ -1,12 +1,12 @@
-# 163help 🎵
+# 163help-client 🎵
 
-> 当前版本：**v5.0.0**
+> 当前版本：**v5.1**
 
-网易云音乐互助播放的**客户端**仓库，提供三种独立客户端形态：**油猴脚本** / **Chrome 浏览器扩展** / **Docker 常驻客户端**（按需选择）。
+网易云音乐互助播放的**客户端**仓库：客户端源码（monorepo）+ 发布产物（油猴脚本 / Chrome 扩展 / Docker 常驻客户端）都在这里。
 
 ## 这是什么
 
-一个网易云音乐**互助播放**工具：用户之间互相帮助播放歌曲——你帮别人放歌赚积分，用积分换别人帮你放歌，从而完成任务（如音乐人每月播放量任务）。
+一个网易云音乐**互助播放**工具：用户之间互相帮助播放歌曲——你帮别人放歌赚积分，用积分换别人帮你放歌，从而完成任务（如音乐人每月 650 次播放量任务）。
 
 **不卖播放量、不收费、不搞会员，纯社区互助。**
 
@@ -27,23 +27,22 @@
 
 扩展版是油猴脚本的完整移植，额外提供**开机自启 + 标签静音**，适合想把浏览器常驻挂着的人：
 
-1. 下载本仓库的 `extension/` 目录（Clone 或下载 ZIP）
+1. 下载本仓库 [Releases](https://github.com/y08lin4/163help-client/releases) 里的 `163help-extension-v5.1.zip`（或直接 clone 本仓库取 `extension/` 目录）
 2. Chrome 打开 `chrome://extensions`
 3. 右上角开启「开发者模式」
-4. 点「加载已解压的扩展程序」，选择 `extension/` 目录
+4. 点「加载已解压的扩展程序」，选择 `extension/` 目录（直接包含 `manifest.json` 的那一层）
 5. 扩展会自动打开一个静音的网易云标签，登录后即可使用
 
 > 扩展版只静音网易云标签，其它标签不受影响。
 
-
 ### 方式 C：Docker 常驻客户端（VPS 24 小时在线互助）
 
-不需要打开浏览器，把客户端放进 Docker 容器，在 VPS 上 **24 小时常驻互助**：无头浏览器（Playwright Chromium）真实播放，一个容器 = 一个网易云账号。当前版本 **v5.0.0**，镜像已公开、匿名可拉取。
+不需要打开浏览器，把客户端放进 Docker 容器，在 VPS 上 **24 小时常驻互助**：无头浏览器（Playwright Chromium）真实播放，一个容器 = 一个网易云账号。当前版本 **v5.1**，镜像已公开、匿名可拉取。
 
 **一键脚本（自动选择镜像通道）**：脚本默认先试 GitHub GHCR、失败自动切换 Cloudflare CDN；国内 VPS 可 `IMAGE_SOURCE=cdn` 强制走 CDN（免登录、更稳）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/y08lin4/163help/main/client-docker/scripts/vps-setup.sh -o vps-setup.sh
+curl -fsSL https://raw.githubusercontent.com/y08lin4/163help-client/main/client-docker/scripts/vps-setup.sh -o vps-setup.sh
 chmod +x vps-setup.sh
 运行 ./vps-setup.sh（交互式输入 UI_PASSWORD，不显示）
 ```
@@ -72,7 +71,7 @@ curl -fSL -o /tmp/163music-docker-client.tar.gz \
   https://163music.linyu.qzz.io/docker/163music-docker-client-latest.tar.gz
 curl -fSL -o /tmp/163music-docker-client.tar.gz.sha256 \
   https://163music.linyu.qzz.io/docker/163music-docker-client-latest.tar.gz.sha256
-(cd /tmp && sha256sum -c 163music-docker-client.tar.gz.sha256)
+(cd /tmp && sha256sum -c 163music-docker-client-latest.tar.gz.sha256)
 
 # 2. 导入镜像（镜像名与通道 A 相同，随后执行通道 A 的 docker run 命令即可）
 docker load -i /tmp/163music-docker-client.tar.gz
@@ -85,32 +84,47 @@ docker load -i /tmp/163music-docker-client.tar.gz
 - **数据持久化**：`-v ./data:/data`（cookie / store / 会话），升级不丢数据。
 - **升级**：`docker pull ghcr.io/y08lin4/163help-client/docker-client:latest` → `docker rm -f 163music-docker-client` → 用**相同数据卷**重新 `docker run`；或直接重跑一键脚本（自动重建容器）。
 - **常驻参数**：`--restart unless-stopped`（崩溃自动拉起）+ `--memory 1g`（防无头浏览器吃爆内存）+ `-e TZ=Asia/Shanghai`。
-- **镜像**：`ghcr.io/y08lin4/163music-help/docker-client`（tag：`latest` / `docker-v5.0.0`）。
-- 支持每日活跃时间窗口（跨零点，上限 16 小时）、Docker Compose、VPS 一键脚本；完整说明见仓库 `client-docker/` 目录。
+- 支持每日活跃时间窗口（跨零点，上限 16 小时）、Docker Compose、VPS 一键脚本；完整说明见 `client-docker/` 目录。
+
 ## 仓库结构
 
 ```
 .
-├── music-help.user.js   # 油猴脚本
-├── index.html           # 使用说明页
-├── extension/           # Chrome MV3 浏览器扩展（独立版）
-│   ├── manifest.json
-│   ├── background.js    # 开机自启 + 标签静音
-│   └── content.js       # 完整移植的互助逻辑
+├── music-help.user.js     # 油猴脚本（最新构建产物，自动更新）
+├── index.html             # 使用说明/安装引导页
+├── extension/             # Chrome MV3 扩展（构建产物，独立版）
+├── client-docker/         # Docker 常驻客户端 v4（历史版本，v5 源码见 apps/docker/）
+│
+├── packages/core/         # 客户端核心逻辑（TS 源码，三端复用：签名/心跳/派单状态机/日志）
+├── packages/ui/           # 互助面板 UI（原生 WebComponent，网易云风设计系统）
+├── apps/userscript/       # 油猴端壳（entry）
+├── apps/extension/        # 扩展端壳（MV3：background/content/popup）
+├── apps/docker/           # Docker 端壳（Node + Playwright 无头浏览器）
+├── scripts/               # 构建与发布脚本（release.sh / bump.sh）
 └── LICENSE
 ```
 
+- **发布产物**（根目录 user.js / extension/）由私有仓同步与 CI 构建更新，用户无需关心构建过程。
+- **源码**（packages/ + apps/）是 v5 客户端的 monorepo，一个核心三端复用。
+
+## 构建与发布
+
+| 操作 | 触发 | 产物 |
+|---|---|---|
+| `git tag v5*` → push | `.github/workflows/release.yml` | GitHub Release 附 `music-help.user.js` + `163help-extension-v5.x.zip` |
+| `git tag docker-v5*` → push | `.github/workflows/docker.yml` | GHCR 镜像 `ghcr.io/y08lin4/163help-client/docker-client`（latest + 版本 tag） |
+| 站点分发 | 私有仓 `sync-client.yml` 自动同步 | `163music.linyu.qzz.io`（油猴/扩展安装页） |
+
 ## 功能
 
-- 多歌曲挂载，专辑自动展开成单曲
+- 多歌曲挂载（仅支持单曲）
 - 偏好选择：短歌优先 / 长歌优先 / 随机
 - 只帮不助：只帮别人赚积分，自己不排队
 - 个人中心 / 排行榜
-- 播放进度心跳（反作弊数据收集）
-- 网易云账号 ID 上报
-- VIP 类型图标
-- 播放趋势自动上报：音乐人账号每日自动同步近 30 天播放数据，无需手动填报
-- SMTP 邮件日报：被助 30/30 达成时自动发送邮件日报（附余额与支撑天数预测）
+- 播放进度心跳（反作弊，无心跳 = 无效播放）
+- 错误日志自动上报（限流 + 双层脱敏）
+- 播放趋势自动上报：音乐人账号每日自动同步近 30 天播放数据
+- SMTP 邮件日报：被助 26/26 达成时自动发送邮件日报（附余额与支撑天数预测）
 - 扩展版额外：开机自启 + 标签静音
 
 详细使用说明见 [index.html](index.html)。

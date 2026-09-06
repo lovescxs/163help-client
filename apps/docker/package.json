@@ -1,0 +1,16 @@
+{
+  "name": "@163help/docker",
+  "version": "5.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --format=esm --platform=node --outfile=dist/main.js --external:playwright-core",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "playwright-core": "1.47.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
