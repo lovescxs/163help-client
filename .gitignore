@@ -2,3 +2,12 @@ node_modules/
 dist/
 *.log
 .npmcache/
+
+# 构建产物（release.sh 输出/中间产物，不入库）
+build/
+apps/extension/content.bundle.js
+
+# 本地环境
+.env
+*.local
+.npm-cache/
