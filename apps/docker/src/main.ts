@@ -11,7 +11,7 @@ import { createStatusServer } from './server.ts';
 
 const DATA_DIR = process.env.DATA_DIR || '/data';
 const BASE = process.env.API_BASE || 'https://163music.linyu.qzz.io';
-const VERSION = '5.1';
+const VERSION = '5.1.0'; // 修复：'5.1' 不是合法 semver，服务端按 semver 解析会 403 client_upgrade_required
 
 const SESSION_FILE = path.join(DATA_DIR, 'session.json');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -30,6 +30,8 @@ const state = {
   hbIntervals: [] as number[],
   lastEvent: '',
   logs: [] as Array<{ level: string; ts: number; msg: string }>,
+  // 修复：原版从未给 onConfig 赋值，导致管理端"保存"是空操作（见 server.ts 的 /api/config）
+  onConfig: null as null | ((c: { cookie?: string; key?: string; clear?: boolean }) => void),
 };
 
 const storage = {
@@ -88,9 +90,30 @@ async function main() {
   runtime.bus.on('auth:user', (u) => { if (u) { state.helpLimit = 9000; } });
   runtime.bus.on('log:append', (e) => { state.logs.push({ level: e.level, ts: e.ts, msg: e.msg }); if (state.logs.length > 200) state.logs.shift(); state.lastEvent = e.msg; });
 
+  // 修复：实现管理端的配置保存（持久化到 /data/session.json）
+  // - key（clientKey）：每次请求都从磁盘读，保存后立即生效
+  // - cookie（neteaseCookie）：在 DockBrowser.launch() 时注入，需重启容器才生效
+  state.onConfig = (c) => {
+    const cur = cfg.load();
+    if (c && c.clear) {
+      delete cur.neteaseCookie;
+      delete cur.clientKey;
+      cfg.save(cur);
+      state.lastEvent = '配置已清除（重启容器后完全生效）';
+      console.log('[main] 配置已清除');
+      return;
+    }
+    if (typeof c?.cookie === 'string' && c.cookie.trim()) cur.neteaseCookie = c.cookie.trim();
+    if (typeof c?.key === 'string' && c.key.trim()) cur.clientKey = c.key.trim();
+    cfg.save(cur);
+    state.lastEvent = '配置已保存：Key 立即生效，Cookie 需重启容器生效';
+    console.log('[main] 配置已保存到', SESSION_FILE);
+  };
+
   createStatusServer({ port: Number(process.env.PORT || 3000), state });
   console.log('[main] 管理端 http://0.0.0.0:3000');
   void runtime.start(true);
 }
 
 main().catch((e) => { console.error('[main] fatal', e); process.exit(1); });
+
